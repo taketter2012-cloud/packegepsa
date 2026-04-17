@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI いとうたけし — PSA期待値判定</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+    header { background: #1a1a1a; color: #fff; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 18px; font-weight: 500; }
+    header span { font-size: 12px; color: #888; }
+    .container { max-width: 680px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: #fff; border-radius: 12px; border: 1px solid #e8e8e4; padding: 1.25rem; margin-bottom: 1rem; }
+    .card-title { font-size: 13px; color: #888; margin-bottom: 1rem; font-weight: 500; letter-spacing: 0.03em; }
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .input-group { display: flex; flex-direction: column; gap: 4px; }
+    .input-group label { font-size: 12px; color: #666; }
+    .input-group input { border: 1px solid #e0e0d8; border-radius: 8px; padding: 8px 10px; font-size: 14px; width: 100%; outline: none; transition: border 0.15s; }
+    .input-group input:focus { border-color: #1a1a1a; }
+    .btn { width: 100%; padding: 12px; background: #1a1a1a; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 1rem; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+    .metric { background: #f5f5f0; border-radius: 8px; padding: 12px 14px; }
+    .metric-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .metric-value { font-size: 22px; font-weight: 500; }
+    .metric-sub { font-size: 11px; color: #aaa; margin-top: 2px; }
+    .verdict { border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+    .verdict-label { font-size: 12px; margin-bottom: 4px; }
+    .verdict-main { font-size: 20px; font-weight: 500; }
+    .verdict-reason { font-size: 13px; margin-top: 8px; line-height: 1.6; }
+    .buy { background: #eaf6ee; }
+    .buy .verdict-main { color: #1a7a3a; }
+    .buy .verdict-label { color: #1a7a3a; }
+    .caution { background: #fff8e6; }
+    .caution .verdict-main { color: #b07700; }
+    .caution .verdict-label { color: #b07700; }
+    .skip { background: #fdecea; }
+    .skip .verdict-main { color: #c0392b; }
+    .skip .verdict-label { color: #c0392b; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+    .tag-ok { background: #eaf6ee; color: #1a7a3a; }
+    .tag-ng { background: #fdecea; color: #c0392b; }
+    .tag-warn { background: #fff8e6; color: #b07700; }
+    .tab-row { display: flex; gap: 6px; margin-bottom: 1rem; }
+    .tab { padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; border: 1px solid #e0e0d8; background: #fff; color: #666; transition: all 0.15s; }
+    .tab.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+    .hidden { display: none; }
+    .strategy-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .strategy-box { background: #f5f5f0; border-radius: 8px; padding: 10px 12px; }
+    .strategy-box .slabel { font-size: 11px; color: #888; margin-bottom: 2px; }
+    .strategy-box .sval { font-size: 15px; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>AI いとうたけし</h1>
+    <span>PSA期待値判定ツール</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="tab-row">
+    <div class="tab active" onclick="switchTab('pp4')">PP4 ブラマジガール</div>
+    <div class="tab" onclick="switchTab('kaiba')">海馬セット</div>
+    <div class="tab" onclick="switchTab('ukiyoe')">浮世絵ブルーアイズ</div>
+  </div>
+
+  <!-- PP4 -->
+  <div id="tab-pp4">
+    <div class="card">
+      <div class="card-title">仕入れ条件</div>
+      <div class="input-grid">
+        <div class="input-group"><label>仕入れ単価（円）</label><input type="number" id="pp4_cost" value="2100"></div>
+        <div class="input-group"><label>鑑定料（円）</label><input type="number" id="pp4_fee" value="4980"></div>
+        <div class="input-group"><label>提出率（%）</label><input type="number" id="pp4_submit" value="50"></div>
+        <div class="input-group"><label>販売手数料（%）</label><input type="number" id="pp4_commission" value="10"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">相場 &amp; PSA取得率</div>
+      <div class="input-grid">
+        <div class="input-group"><label>PSA10 売値（円）</label><input type="number" id="pp4_p10" value="35000"></div>
+        <div class="input-group"><label>PSA9 売値（円）</label><input type="number" id="pp4_p9" value="5200"></div>
+        <div class="input-group"><label>提出後 PSA10率（%）</label><input type="number" id="pp4_r10" value="30"></div>
+        <div class="input-group"><label>提出後 PSA9率（%）</label><input type="number" id="pp4_r9" value="55"></div>
+      </div>
+    </div>
+    <button class="btn" onclick="calc('pp4')">判定する</button>
+    <div id="pp4_result" class="hidden" style="margin-top:1rem;"></div>
+  </div>
+
+  <!-- 海馬セット -->
+  <div id="tab-kaiba" class="hidden">
+    <div class="card">
+      <div class="card-title">仕入れ条件（3枚セット）</div>
+      <div class="input-grid">
+        <div class="input-group"><label>仕入れ価格（円）</label><input type="number" id="kaiba_cost" value="35000"></div>
+        <div class="input-group"><label>鑑定料×3枚（円）</label><input type="number" id="kaiba_fee" value="14940"></div>
+        <div class="input-group"><label>販売手数料（%）</label><input type="number" id="kaiba_commission" value="10"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">相場 &amp; PSA取得率</div>
+      <div class="input-grid">
+        <div class="input-group"><label>PSA10 売値 1枚（円）</label><input type="number" id="kaiba_p10" value="27000"></div>
+        <div class="input-group"><label>PSA9 売値 1枚（円）</label><input type="number" id="kaiba_p9" value="8000"></div>
+        <div class="input-group"><label>PSA10率（%）</label><input type="number" id="kaiba_r10" value="80"></div>
+        <div class="input-group"><label>PSA9率（%）</label><input type="number" id="kaiba_r9" value="15"></div>
+      </div>
+    </div>
+    <button class="btn" onclick="calc('kaiba')">判定する</button>
+    <div id="kaiba_result" class="hidden" style="margin-top:1rem;"></div>
+  </div>
+
+  <!-- 浮世絵 -->
+  <div id="tab-ukiyoe" class="hidden">
+    <div class="card">
+      <div class="card-title">仕入れ条件</div>
+      <div class="input-grid">
+        <div class="input-group"><label>仕入れ単価（円）</label><input type="number" id="ukiyoe_cost" value="16000"></div>
+        <div class="input-group"><label>鑑定料（円）</label><input type="number" id="ukiyoe_fee" value="4980"></div>
+        <div class="input-group"><label>販売手数料（%）</label><input type="number" id="ukiyoe_commission" value="10"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">相場 &amp; PSA取得率</div>
+      <div class="input-grid">
+        <div class="input-group"><label>PSA10 売値（円）</label><input type="number" id="ukiyoe_p10" value="40000"></div>
+        <div class="input-group"><label>PSA9 売値（円）</label><input type="number" id="ukiyoe_p9" value="16000"></div>
+        <div class="input-group"><label>PSA10率（%）</label><input type="number" id="ukiyoe_r10" value="87"></div>
+        <div class="input-group"><label>PSA9率（%）</label><input type="number" id="ukiyoe_r9" value="10"></div>
+      </div>
+    </div>
+    <button class="btn" onclick="calc('ukiyoe')">判定する</button>
+    <div id="ukiyoe_result" class="hidden" style="margin-top:1rem;"></div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(name) {
+  ['pp4','kaiba','ukiyoe'].forEach(t => {
+    document.getElementById('tab-' + t).classList.add('hidden');
+    document.querySelectorAll('.tab')[['pp4','kaiba','ukiyoe'].indexOf(t)].classList.remove('active');
+  });
+  document.getElementById('tab-' + name).classList.remove('hidden');
+  document.querySelectorAll('.tab')[['pp4','kaiba','ukiyoe'].indexOf(name)].classList.add('active');
+}
+
+function renderResult(id, ev_profit, machine_rate, break_even, avg_cost, buy_limit, p10_rate, reasons, tags) {
+  const el = document.getElementById(id + '_result');
+  let verdict_class, verdict_main;
+  if (machine_rate >= 120) { verdict_class = 'buy'; verdict_main = '買い — 強気でいける'; }
+  else if (machine_rate >= 100) { verdict_class = 'buy'; verdict_main = '買い — 期待値プラス'; }
+  else if (machine_rate >= 85) { verdict_class = 'caution'; verdict_main = '微妙 — PSA10率次第'; }
+  else { verdict_class = 'skip'; verdict_main = '見送り — 期待値マイナス'; }
+
+  const tagHtml = tags.map(t => `<span class="tag tag-${t.type}">${t.label}</span>`).join('');
+
+  el.innerHTML = `
+    <div class="verdict ${verdict_class}">
+      <div class="verdict-label">判定</div>
+      <div class="verdict-main">${verdict_main}</div>
+      <div class="verdict-reason">${reasons.join(' / ')}</div>
+      <div class="tags">${tagHtml}</div>
+    </div>
+    <div class="result-grid">
+      <div class="metric"><div class="metric-label">期待利益</div><div class="metric-value">${ev_profit >= 0 ? '+' : ''}${Math.round(ev_profit).toLocaleString()}円</div><div class="metric-sub">1回あたり</div></div>
+      <div class="metric"><div class="metric-label">機械割</div><div class="metric-value">${machine_rate.toFixed(1)}%</div><div class="metric-sub">100%超えで期待値プラス</div></div>
+      <div class="metric"><div class="metric-label">損益分岐 PSA10率</div><div class="metric-value">${break_even > 100 ? '超過' : break_even.toFixed(1) + '%'}</div><div class="metric-sub">この率以上必要</div></div>
+      <div class="metric"><div class="metric-label">平均投入コスト</div><div class="metric-value">${Math.round(avg_cost).toLocaleString()}円</div><div class="metric-sub">鑑定費按分込み</div></div>
+    </div>
+    <div class="strategy-row">
+      <div class="strategy-box"><div class="slabel">買いOK上限</div><div class="sval">${Math.round(buy_limit).toLocaleString()}円まで</div></div>
+      <div class="strategy-box"><div class="slabel">入力PSA10率</div><div class="sval">${p10_rate.toFixed(0)}%</div></div>
+    </div>
+  `;
+  el.classList.remove('hidden');
+}
+
+function calc(type) {
+  if (type === 'pp4') {
+    const cost = +document.getElementById('pp4_cost').value;
+    const fee = +document.getElementById('pp4_fee').value;
+    const submit = +document.getElementById('pp4_submit').value / 100;
+    const commission = +document.getElementById('pp4_commission').value / 100;
+    const p10 = +document.getElementById('pp4_p10').value;
+    const p9 = +document.getElementById('pp4_p9').value;
+    const r10 = +document.getElementById('pp4_r10').value / 100;
+    const r9 = +document.getElementById('pp4_r9').value / 100;
+    const r8 = Math.max(0, 1 - r10 - r9);
+    const p10n = p10 * (1 - commission), p9n = p9 * (1 - commission);
+    const ev_submit = r10 * p10n + r9 * p9n - fee;
+    const ev_no = 0;
+    const ev_profit = submit * ev_submit + (1 - submit) * ev_no - cost;
+    const avg_cost = cost + submit * fee;
+    const ev_return = submit * (r10 * p10n + r9 * p9n) + (1 - submit) * 0;
+    const machine_rate = avg_cost > 0 ? ev_return / avg_cost * 100 : 0;
+    const A = submit * p10n;
+    const B = submit * (r9 * p9n - fee) - cost;
+    const break_even = A > 0 ? Math.max(0, -B / A * 100) : 999;
+    const buy_limit = ev_return - submit * fee;
+    const reasons = [], tags = [];
+    if (r10 * 100 >= break_even) { reasons.push('PSA10率が損益分岐を超えている'); tags.push({type:'ok', label:'10率OK'}); }
+    else { reasons.push('PSA10率が損益分岐を下回っている'); tags.push({type:'ng', label:'10率不足'}); }
+    if (machine_rate >= 100) tags.push({type:'ok', label:'期待値プラス'}); else tags.push({type:'ng', label:'期待値マイナス'});
+    if (p9 >= 4000) { reasons.push('PSA9も売れる構造'); tags.push({type:'ok', label:'PSA9有効'}); }
+    else { reasons.push('PSA9が弱い — 10一本勝負'); tags.push({type:'warn', label:'PSA9弱い'}); }
+    if (cost <= buy_limit) tags.push({type:'ok', label:'仕入れOK'}); else { reasons.push('仕入れ価格が高すぎる'); tags.push({type:'ng', label:'仕入れ高すぎ'}); }
+    renderResult('pp4', ev_profit, machine_rate, break_even, avg_cost, buy_limit, r10 * 100, reasons, tags);
+  }
+
+  if (type === 'kaiba') {
+    const cost = +document.getElementById('kaiba_cost').value;
+    const fee = +document.getElementById('kaiba_fee').value;
+    const commission = +document.getElementById('kaiba_commission').value / 100;
+    const p10 = +document.getElementById('kaiba_p10').value;
+    const p9 = +document.getElementById('kaiba_p9').value;
+    const r10 = +document.getElementById('kaiba_r10').value / 100;
+    const r9 = +document.getElementById('kaiba_r9').value / 100;
+    const r8 = Math.max(0, 1 - r10 - r9);
+    const p10n = p10 * (1 - commission), p9n = p9 * (1 - commission);
+    const ev_per_card = r10 * p10n + r9 * p9n + r8 * 0;
+    const ev_return = 3 * ev_per_card;
+    const total_cost = cost + fee;
+    const ev_profit = ev_return - total_cost;
+    const machine_rate = total_cost > 0 ? ev_return / total_cost * 100 : 0;
+    const break_even = (3 * p10n) > 0 ? (total_cost - 3 * r9 * p9n) / (3 * p10n) * 100 : 999;
+    const buy_limit = ev_return - fee;
+    const reasons = [], tags = [];
+    if (machine_rate >= 100) { reasons.push('期待値プラス'); tags.push({type:'ok', label:'期待値プラス'}); }
+    else { reasons.push('期待値マイナス — 仕入れを下げるか相場上昇待ち'); tags.push({type:'ng', label:'期待値マイナス'}); }
+    if (r10 * 100 >= 70) { reasons.push('PSA10率が高い'); tags.push({type:'ok', label:'高10率'}); }
+    else tags.push({type:'warn', label:'10率要確認'});
+    if (cost <= buy_limit) tags.push({type:'ok', label:'仕入れOK'}); else { reasons.push('仕入れが高い'); tags.push({type:'ng', label:'仕入れ高すぎ'}); }
+    renderResult('kaiba', ev_profit, machine_rate, break_even, total_cost, buy_limit, r10 * 100, reasons, tags);
+  }
+
+  if (type === 'ukiyoe') {
+    const cost = +document.getElementById('ukiyoe_cost').value;
+    const fee = +document.getElementById('ukiyoe_fee').value;
+    const commission = +document.getElementById('ukiyoe_commission').value / 100;
+    const p10 = +document.getElementById('ukiyoe_p10').value;
+    const p9 = +document.getElementById('ukiyoe_p9').value;
+    const r10 = +document.getElementById('ukiyoe_r10').value / 100;
+    const r9 = +document.getElementById('ukiyoe_r9').value / 100;
+    const r8 = Math.max(0, 1 - r10 - r9);
+    const p10n = p10 * (1 - commission), p9n = p9 * (1 - commission);
+    const ev_return = r10 * p10n + r9 * p9n;
+    const total_cost = cost + fee;
+    const ev_profit = ev_return - total_cost;
+    const machine_rate = total_cost > 0 ? ev_return / total_cost * 100 : 0;
+    const break_even = p10n > 0 ? (total_cost - r9 * p9n) / p10n * 100 : 999;
+    const buy_limit = ev_return - fee;
+    const reasons = [], tags = [];
+    if (machine_rate >= 100) { reasons.push('期待値プラス'); tags.push({type:'ok', label:'期待値プラス'}); }
+    else { reasons.push('期待値マイナス'); tags.push({type:'ng', label:'期待値マイナス'}); }
+    if (r10 * 100 >= 80) { reasons.push('PSA10率が非常に高い'); tags.push({type:'ok', label:'高10率'}); }
+    else tags.push({type:'warn', label:'10率要確認'});
+    if (p9 >= 10000) { reasons.push('PSA9も高値で売れる'); tags.push({type:'ok', label:'PSA9強い'}); }
+    else tags.push({type:'warn', label:'PSA9確認'});
+    if (cost <= buy_limit) tags.push({type:'ok', label:'仕入れOK'}); else { reasons.push('仕入れ高すぎ'); tags.push({type:'ng', label:'仕入れ高すぎ'}); }
+    renderResult('ukiyoe', ev_profit, machine_rate, break_even, total_cost, buy_limit, r10 * 100, reasons, tags);
+  }
+}
+</script>
+</body>
+</html>
